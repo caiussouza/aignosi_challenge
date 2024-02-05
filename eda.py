@@ -6,12 +6,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import adfuller, ccf
-from statsmodels.tsa.seasonal import seasonal_decompose
 from xgboost import XGBRegressor
 from xgboost import plot_importance
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.decomposition import PCA
 
 
 # Plota correlação cruzada entre duas variáveis.
@@ -151,12 +148,10 @@ target = clean_df.iloc[:, -1]
 
 
 """
-
 Primeiro grupo:
 
 * % Iron Feed
 * % Silica Feed
-
 """
 
 # Visualização das séries temporais
@@ -178,8 +173,9 @@ max_val, lag = plot_ccf(
     "% Silica Feed x Target",
 )
 print(f"Maior correlação: {max_val} com {lag/60} horas de diferença")
-"""
 
+
+"""
 Segundo grupo:
 
 * Starch flow
@@ -187,7 +183,6 @@ Segundo grupo:
 * Ore pulp flow
 * Ore pulp pH
 * Ore pulp density
-
 """
 
 # Resample para dia para facilitar visualização
@@ -292,60 +287,12 @@ pd.plotting.autocorrelation_plot(clean_df.resample("min").mean().iloc[:, -1])
 
 
 # Modelagem orientada a feature importance
-
-# Revendo correlações
-"""
-% Silica Feed x Iron Feed (-0.97)
-Flotation Column 03 Air Flow x 01 Air Flow (0.94)
-01 Air Flow x 02 Air Flow (0.82)
-03 Air Flow x 02 Air Flow (0.83)
-"""
-corrmat = clean_df.corr()
-plt.figure(figsize=(30, 15))
-sns.heatmap(corrmat, annot=True)
-plt.tight_layout()
-
-# Modelando com todas as features
 X_train = clean_df[clean_df.index < "2017-09-02 01:00:00"].iloc[:, 0:22]
 X_test = clean_df[clean_df.index >= "2017-09-02 01:00:00"].iloc[:, 0:22]
 y_train = clean_df[clean_df.index < "2017-09-02 01:00:00"].iloc[:, -1]
 y_test = clean_df[clean_df.index >= "2017-09-02 01:00:00"].iloc[:, -1]
 
 y_test = pd.DataFrame(y_test)
-
-model = XGBRegressor(n_estimators=1000)
-model.fit(X_train, y_train)
-y_hat = pd.DataFrame(model.predict(X_test))
-y_hat = y_hat.set_index(y_test.index)
-
-mse = mean_squared_error(y_test, y_hat)
-print(f"MSE: {mse}\n RMSE: {mse**(1/2)}\n Média: {np.mean(target)}")
-
-plot_importance(model)
-
-# Retirando redundâncias (% Silica Feed, Flotation 02 e 03 Air Flow)
-X_train = clean_df[clean_df.index < "2017-09-02 01:00:00"].iloc[:, 0:22]
-X_test = clean_df[clean_df.index >= "2017-09-02 01:00:00"].iloc[:, 0:22]
-y_train = clean_df[clean_df.index < "2017-09-02 01:00:00"].iloc[:, -1]
-y_test = clean_df[clean_df.index >= "2017-09-02 01:00:00"].iloc[:, -1]
-
-y_test = pd.DataFrame(y_test)
-
-X_train = X_train.drop(
-    columns=[
-        "% Silica Feed",
-        "Flotation Column 02 Air Flow",
-        "Flotation Column 03 Air Flow",
-    ]
-)
-
-X_test = X_test.drop(
-    columns=[
-        "% Silica Feed",
-        "Flotation Column 02 Air Flow",
-        "Flotation Column 03 Air Flow",
-    ]
-)
 
 model = XGBRegressor(n_estimators=1000)
 model.fit(X_train, y_train)
